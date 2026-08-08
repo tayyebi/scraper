@@ -227,11 +227,11 @@ func TestRemovingAnAlreadyRemovedNodeIsFine(t *testing.T) {
 
 func TestMutationOnUnknownNodeIsAGap(t *testing.T) {
 	cases := map[string]Op{
-		"attr on unknown node":   {Kind: OpAttr, ID: 999, Name: "x", Value: str("y")},
-		"text on unknown node":   {Kind: OpText, ID: 999, Value: str("y")},
-		"insert into unknown":    {Kind: OpInsert, Parent: 999, Node: &core.Node{ID: 1000}},
-		"unknown mutation kind":  {Kind: "teleport", ID: 4},
-		"insert without a node":  {Kind: OpInsert, Parent: 4},
+		"attr on unknown node":  {Kind: OpAttr, ID: 999, Name: "x", Value: str("y")},
+		"text on unknown node":  {Kind: OpText, ID: 999, Value: str("y")},
+		"insert into unknown":   {Kind: OpInsert, Parent: 999, Node: &core.Node{ID: 1000}},
+		"unknown mutation kind": {Kind: "teleport", ID: 4},
+		"insert without a node": {Kind: OpInsert, Parent: 4},
 	}
 	for name, op := range cases {
 		t.Run(name, func(t *testing.T) {
