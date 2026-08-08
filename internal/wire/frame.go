@@ -61,13 +61,13 @@ const (
 	CloseUnsupportedData = 1003
 	// CloseNoStatus and CloseAbnormal never appear on the wire; they are what
 	// the application sees when a peer closed without a code, or dropped.
-	CloseNoStatus       = 1005
-	CloseAbnormal       = 1006
-	CloseInvalidPayload = 1007
+	CloseNoStatus        = 1005
+	CloseAbnormal        = 1006
+	CloseInvalidPayload  = 1007
 	ClosePolicyViolation = 1008
-	CloseMessageTooBig  = 1009
-	CloseMandatoryExt   = 1010
-	CloseInternalError  = 1011
+	CloseMessageTooBig   = 1009
+	CloseMandatoryExt    = 1010
+	CloseInternalError   = 1011
 )
 
 // ProtocolError is a violation of RFC 6455 by the peer. It always results in

@@ -51,16 +51,16 @@ func (e *EnvelopeError) Error() string { return e.Code + ": " + e.Message }
 
 // Stable error codes an agent may report.
 const (
-	CodeUnsupported  = "unsupported"
-	CodeNoSuchTab    = "no_such_tab"
-	CodeTimeout      = "timeout"
-	CodeNavigation   = "navigation_failed"
-	CodeNotFound     = "not_found"
-	CodeBadParams    = "bad_params"
-	CodeDenied       = "denied"
-	CodeInternal     = "internal"
-	CodeDetached     = "detached"
-	CodeMirrorGap    = "mirror_gap"
+	CodeUnsupported = "unsupported"
+	CodeNoSuchTab   = "no_such_tab"
+	CodeTimeout     = "timeout"
+	CodeNavigation  = "navigation_failed"
+	CodeNotFound    = "not_found"
+	CodeBadParams   = "bad_params"
+	CodeDenied      = "denied"
+	CodeInternal    = "internal"
+	CodeDetached    = "detached"
+	CodeMirrorGap   = "mirror_gap"
 )
 
 var errBadEnvelope = errors.New("malformed envelope")
