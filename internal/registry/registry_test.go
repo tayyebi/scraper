@@ -33,7 +33,7 @@ type fakeLink struct {
 	respond func(ctx context.Context, sessionID, op string, params json.RawMessage) (json.RawMessage, error)
 }
 
-func (f *fakeLink) AgentID() string                { return f.id }
+func (f *fakeLink) AgentID() string                 { return f.id }
 func (f *fakeLink) Capabilities() core.Capabilities { return f.caps }
 
 func (f *fakeLink) Call(ctx context.Context, sessionID, op string, params json.RawMessage) (json.RawMessage, error) {
