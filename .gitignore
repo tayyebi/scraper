@@ -1,0 +1,15 @@
+# build output
+/hubd
+/dist/
+*.zip
+
+# runtime state (hub data directory)
+/data/
+*.db
+*.db-wal
+*.db-shm
+
+# editor / OS
+.DS_Store
+.idea/
+.vscode/

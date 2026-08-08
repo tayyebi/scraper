@@ -1,0 +1,128 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  checks: write
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  GO_VERSION: '1.23'
+  # No go.sum can be authored by hand -- module hashes require running Go, and
+  # this repo is developed on a machine without a Go toolchain. -mod=mod lets
+  # the build resolve and write them instead of refusing to start.
+  GOFLAGS: -mod=mod
+
+jobs:
+  # Job one exists because two artifacts of a Go repo cannot be hand-written:
+  # go.sum (needs real module hashes) and gofmt's exact tabwriter alignment.
+  # Both are generated here and committed back to main with [skip ci], which
+  # GitHub honors. A push made with GITHUB_TOKEN does not itself trigger a
+  # workflow, so that is a second, independent guard against a trigger loop.
+  bootstrap:
+    name: normalize (tidy + gofmt)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: go mod tidy
+        run: go mod tidy
+
+      - name: gofmt -w
+        run: |
+          files="$(git ls-files '*.go')"
+          if [ -n "$files" ]; then
+            # shellcheck disable=SC2086
+            gofmt -w -s $files
+          else
+            echo "no Go files yet"
+          fi
+
+      - name: Commit normalization back to ${{ github.ref_name }}
+        if: github.event_name == 'push' && github.actor != 'github-actions[bot]'
+        run: |
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "already normalized"
+            exit 0
+          fi
+          git config user.name  'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'ci: normalize go.mod/go.sum and gofmt [skip ci]'
+          git push origin "HEAD:${{ github.ref_name }}"
+
+  build:
+    name: vet + build + test
+    runs-on: ubuntu-latest
+    needs: bootstrap
+    steps:
+      # Deliberately checks out the branch tip rather than github.sha: the
+      # bootstrap job may have just pushed the normalized go.sum, and this job
+      # must compile that, not the pre-normalization snapshot.
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - run: chmod +x .github/scripts/annotate.sh
+
+      - name: gofmt check
+        run: |
+          set -o pipefail
+          files="$(git ls-files '*.go')"
+          [ -z "$files" ] && exit 0
+          # shellcheck disable=SC2086
+          out="$(gofmt -l -s $files)"
+          if [ -n "$out" ]; then
+            echo "$out" | while IFS= read -r f; do
+              printf '::error file=%s,line=1::not gofmt-simplified\n' "$f"
+            done
+            exit 1
+          fi
+
+      - name: go vet
+        run: |
+          set -o pipefail
+          go vet ./... 2>&1 | .github/scripts/annotate.sh
+
+      - name: go build
+        run: |
+          set -o pipefail
+          go build ./... 2>&1 | .github/scripts/annotate.sh
+
+      - name: go test
+        run: |
+          set -o pipefail
+          go test ./... -count=1 2>&1 | .github/scripts/annotate.sh
+
+      - name: build hubd
+        run: |
+          set -o pipefail
+          CGO_ENABLED=0 go build -trimpath -o dist/hubd ./cmd/hubd 2>&1 | .github/scripts/annotate.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hubd-linux-amd64
+          path: dist/hubd
+          if-no-files-found: error
