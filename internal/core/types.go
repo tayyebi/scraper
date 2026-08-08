@@ -217,17 +217,17 @@ func IsKnownOp(op string) bool {
 }
 
 type Command struct {
-	ID        string          `json:"id"`
-	SessionID string          `json:"sessionId"`
-	AgentID   string          `json:"agentId"`
-	Op        string          `json:"op"`
-	Params    json.RawMessage `json:"params,omitempty"`
-	State     CommandState    `json:"state"`
-	Result    json.RawMessage `json:"result,omitempty"`
-	Error     string          `json:"error,omitempty"`
-	CreatedAt time.Time       `json:"createdAt"`
-	DeadlineAt time.Time      `json:"deadlineAt"`
-	DoneAt    *time.Time      `json:"doneAt,omitempty"`
+	ID         string          `json:"id"`
+	SessionID  string          `json:"sessionId"`
+	AgentID    string          `json:"agentId"`
+	Op         string          `json:"op"`
+	Params     json.RawMessage `json:"params,omitempty"`
+	State      CommandState    `json:"state"`
+	Result     json.RawMessage `json:"result,omitempty"`
+	Error      string          `json:"error,omitempty"`
+	CreatedAt  time.Time       `json:"createdAt"`
+	DeadlineAt time.Time       `json:"deadlineAt"`
+	DoneAt     *time.Time      `json:"doneAt,omitempty"`
 }
 
 // ---------------------------------------------------------------- events
@@ -267,27 +267,27 @@ type Event struct {
 // not inline: they are artifacts in the blob store, referenced by digest, so an
 // exchange row stays small no matter how large the response was.
 type Exchange struct {
-	ID          int64             `json:"id"`
-	SessionID   string            `json:"sessionId"`
-	AgentID     string            `json:"agentId"`
-	RequestID   string            `json:"requestId"`
-	Method      string            `json:"method"`
-	URL         string            `json:"url"`
-	Status      int               `json:"status"`
-	StatusText  string            `json:"statusText,omitempty"`
-	MimeType    string            `json:"mimeType,omitempty"`
-	ResourceType string           `json:"resourceType,omitempty"`
-	Initiator   string            `json:"initiator,omitempty"`
-	ReqHeaders  map[string]string `json:"requestHeaders,omitempty"`
-	ResHeaders  map[string]string `json:"responseHeaders,omitempty"`
-	ReqBody     string            `json:"requestBodyDigest,omitempty"`
-	ResBody     string            `json:"responseBodyDigest,omitempty"`
-	ReqBodySize int64             `json:"requestBodySize,omitempty"`
-	ResBodySize int64             `json:"responseBodySize,omitempty"`
-	FromCache   bool              `json:"fromCache,omitempty"`
-	Truncated   bool              `json:"truncated,omitempty"`
-	StartedAt   time.Time         `json:"startedAt"`
-	DurationMs  int64             `json:"durationMs"`
+	ID           int64             `json:"id"`
+	SessionID    string            `json:"sessionId"`
+	AgentID      string            `json:"agentId"`
+	RequestID    string            `json:"requestId"`
+	Method       string            `json:"method"`
+	URL          string            `json:"url"`
+	Status       int               `json:"status"`
+	StatusText   string            `json:"statusText,omitempty"`
+	MimeType     string            `json:"mimeType,omitempty"`
+	ResourceType string            `json:"resourceType,omitempty"`
+	Initiator    string            `json:"initiator,omitempty"`
+	ReqHeaders   map[string]string `json:"requestHeaders,omitempty"`
+	ResHeaders   map[string]string `json:"responseHeaders,omitempty"`
+	ReqBody      string            `json:"requestBodyDigest,omitempty"`
+	ResBody      string            `json:"responseBodyDigest,omitempty"`
+	ReqBodySize  int64             `json:"requestBodySize,omitempty"`
+	ResBodySize  int64             `json:"responseBodySize,omitempty"`
+	FromCache    bool              `json:"fromCache,omitempty"`
+	Truncated    bool              `json:"truncated,omitempty"`
+	StartedAt    time.Time         `json:"startedAt"`
+	DurationMs   int64             `json:"durationMs"`
 }
 
 // -------------------------------------------------------------- artifacts
