@@ -296,10 +296,10 @@ const sessionColumns = `id, agent_id, tab_id, url, title, origin, state, created
 
 func scanSession(sc interface{ Scan(...any) error }) (core.Session, error) {
 	var (
-		s              core.Session
-		origin, state  string
-		created        int64
-		closed         sql.NullInt64
+		s             core.Session
+		origin, state string
+		created       int64
+		closed        sql.NullInt64
 	)
 	err := sc.Scan(&s.ID, &s.AgentID, &s.TabID, &s.URL, &s.Title, &origin, &state, &created, &closed)
 	if err != nil {
@@ -551,10 +551,10 @@ func (s *Store) ListExchanges(ctx context.Context, sessionID string, limit int) 
 	out := []core.Exchange{}
 	for rows.Next() {
 		var (
-			x                    core.Exchange
-			reqHeaders           sql.NullString
-			resHeaders           sql.NullString
-			started              int64
+			x          core.Exchange
+			reqHeaders sql.NullString
+			resHeaders sql.NullString
+			started    int64
 		)
 		if err := rows.Scan(&x.ID, &x.SessionID, &x.AgentID, &x.RequestID, &x.Method, &x.URL,
 			&x.Status, &x.StatusText, &x.MimeType, &x.ResourceType, &x.Initiator,

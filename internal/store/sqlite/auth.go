@@ -37,12 +37,12 @@ func (s *Store) SpendEnrollmentToken(ctx context.Context, hash, agentID string, 
 	defer func() { _ = tx.Rollback() }()
 
 	var (
-		t         core.EnrollmentToken
-		labels    string
-		created   int64
-		expires   int64
-		usedAt    sql.NullInt64
-		usedBy    string
+		t       core.EnrollmentToken
+		labels  string
+		created int64
+		expires int64
+		usedAt  sql.NullInt64
+		usedBy  string
 	)
 	err = tx.QueryRowContext(ctx,
 		`SELECT id, labels, created_at, expires_at, used_at, used_by FROM enrollment_tokens WHERE hash = ?`,
