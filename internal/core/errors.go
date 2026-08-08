@@ -36,14 +36,18 @@ func (e *ErrUnsupported) Error() string {
 	return fmt.Sprintf("agent %s cannot %s", e.AgentID, e.Op)
 }
 
-// CommandError is a failure reported by the agent itself, as opposed to a
-// failure to reach the agent.
-type CommandError struct {
+// CommandFailure is a failure reported by the agent itself, as opposed to a
+// failure to reach the agent. The distinction matters to a caller: a retry
+// fixes an unreachable agent and will not fix a selector that matched nothing.
+//
+// Named for the failure rather than the state because CommandError is already
+// the CommandState constant for that state.
+type CommandFailure struct {
 	Op      string
 	Code    string
 	Message string
 }
 
-func (e *CommandError) Error() string {
+func (e *CommandFailure) Error() string {
 	return fmt.Sprintf("%s failed: %s (%s)", e.Op, e.Message, e.Code)
 }
