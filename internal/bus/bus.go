@@ -32,6 +32,12 @@ type subscriber struct {
 	// dropped counts events discarded since the last drop marker was
 	// delivered. Kept atomic because it is written from every publisher.
 	dropped atomic.Int64
+
+	// closed guards the channel close, and is protected by the Bus mutex
+	// rather than by the subscriber. Both Bus.Close and a subscriber's own
+	// cancel want to close this channel, and the ordinary calling pattern --
+	// `defer cancel()` alongside a `defer bus.Close()` -- runs both.
+	closed bool
 }
 
 // Bus fans events out to subscribers.
@@ -125,17 +131,19 @@ func (b *Bus) subscribe(sessionID string, buffer int) (<-chan core.Event, func()
 	b.subs[s] = struct{}{}
 	b.mu.Unlock()
 
-	var once sync.Once
 	cancel := func() {
-		once.Do(func() {
-			// Removal and close happen under the write lock, while Publish
-			// holds the read lock. That is what makes closing the channel safe:
-			// no publisher can be inside deliver for this subscriber.
-			b.mu.Lock()
-			delete(b.subs, s)
-			b.mu.Unlock()
-			close(s.ch)
-		})
+		// Removal and close happen under the write lock, while Publish holds
+		// the read lock. That is what makes closing the channel safe: no
+		// publisher can be inside deliver for this subscriber. The closed flag
+		// makes it safe to call twice, and to race Bus.Close.
+		b.mu.Lock()
+		defer b.mu.Unlock()
+		if s.closed {
+			return
+		}
+		s.closed = true
+		delete(b.subs, s)
+		close(s.ch)
 	}
 	return s.ch, cancel
 }
@@ -150,6 +158,10 @@ func (b *Bus) Close() {
 	b.closed = true
 	for s := range b.subs {
 		delete(b.subs, s)
+		if s.closed {
+			continue
+		}
+		s.closed = true
 		close(s.ch)
 	}
 }
