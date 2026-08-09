@@ -25,6 +25,21 @@ func newService(t *testing.T, opts Options) (*Service, *sqlite.Store) {
 	return New(opts), st
 }
 
+// putAgent creates the agent row that a credential references.
+//
+// A credential is meaningless without an agent to belong to, and the schema
+// enforces that with a foreign key -- which is also what makes revoking an
+// agent take its credential with it.
+func putAgent(t *testing.T, st *sqlite.Store, id string) {
+	t.Helper()
+	now := time.Now().UTC()
+	if err := st.PutAgent(context.Background(), core.Agent{
+		ID: id, Name: id, Status: core.AgentOffline, EnrolledAt: now, LastSeenAt: now,
+	}); err != nil {
+		t.Fatalf("PutAgent(%s): %v", id, err)
+	}
+}
+
 // --------------------------------------------------------- RFC 6070 vectors
 
 // PBKDF2 is hand-written to avoid a second module dependency. That is only
@@ -152,7 +167,7 @@ func TestVerifyRejectsMalformedHashes(t *testing.T) {
 // ---------------------------------------------------------------- enrollment
 
 func TestEnrollmentTokenExchangesForACredential(t *testing.T) {
-	s, _ := newService(t, Options{})
+	s, st := newService(t, Options{})
 	ctx := context.Background()
 
 	token, plain, err := s.MintEnrollment(ctx, map[string]string{"team": "growth"}, 0)
@@ -168,6 +183,7 @@ func TestEnrollmentTokenExchangesForACredential(t *testing.T) {
 	}
 
 	agentID := core.NewID(core.PrefixAgent)
+	putAgent(t, st, agentID)
 	redeemed, err := s.RedeemEnrollment(ctx, plain, agentID)
 	if err != nil {
 		t.Fatalf("RedeemEnrollment: %v", err)
@@ -260,9 +276,10 @@ func TestWrongSecretTypeIsRejectedWithoutALookup(t *testing.T) {
 }
 
 func TestRevokedAgentCredentialStopsWorking(t *testing.T) {
-	s, _ := newService(t, Options{})
+	s, st := newService(t, Options{})
 	ctx := context.Background()
 
+	putAgent(t, st, "a_1")
 	_, plain, _ := s.MintEnrollment(ctx, nil, 0)
 	if _, err := s.RedeemEnrollment(ctx, plain, "a_1"); err != nil {
 		t.Fatalf("RedeemEnrollment: %v", err)
@@ -286,11 +303,12 @@ func TestRevokedAgentCredentialStopsWorking(t *testing.T) {
 // Revoking one device must not touch another, which is the reason credentials
 // are per-agent rather than one shared pairing secret.
 func TestRevocationIsPerAgent(t *testing.T) {
-	s, _ := newService(t, Options{})
+	s, st := newService(t, Options{})
 	ctx := context.Background()
 
 	credentials := map[string]string{}
 	for _, id := range []string{"a_1", "a_2"} {
+		putAgent(t, st, id)
 		_, plain, _ := s.MintEnrollment(ctx, nil, 0)
 		if _, err := s.RedeemEnrollment(ctx, plain, id); err != nil {
 			t.Fatalf("RedeemEnrollment(%s): %v", id, err)
