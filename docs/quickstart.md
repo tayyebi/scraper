@@ -10,7 +10,9 @@ system works, and they end with a check you can see with your own eyes.
 
 ## 1. Get a hub
 
-Grab `hubd` from the latest CI run's artifacts, or build it:
+Grab `hubd-linux-amd64` from the [latest release][releases], or build it:
+
+[releases]: https://github.com/tayyebi/scraper/releases/latest
 
 ```sh
 go build -o hubd ./cmd/hubd
