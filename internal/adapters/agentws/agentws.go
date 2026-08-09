@@ -154,7 +154,10 @@ func (h *Handler) handleEnroll(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	agentID := core.NewID(core.PrefixAgent)
 
-	token, credential, err := h.auth.RedeemEnrollment(ctx, req.Token, agentID)
+	// Order matters and is enforced by a foreign key: the token is spent first
+	// (so a stream of bad tokens cannot create agent rows), then the agent
+	// record exists, and only then is a credential issued against it.
+	token, err := h.auth.RedeemEnrollment(ctx, req.Token, agentID)
 	if err != nil {
 		writeDomainError(w, err)
 		return
@@ -188,6 +191,12 @@ func (h *Handler) handleEnroll(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := h.store.PutAgent(ctx, agent); err != nil {
 		writeError(w, http.StatusInternalServerError, "could not record the agent: "+err.Error())
+		return
+	}
+
+	credential, err := h.auth.IssueCredential(ctx, agentID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "could not issue a credential: "+err.Error())
 		return
 	}
 

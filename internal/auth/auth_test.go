@@ -168,9 +168,13 @@ func TestEnrollmentTokenExchangesForACredential(t *testing.T) {
 	}
 
 	agentID := core.NewID(core.PrefixAgent)
-	redeemed, credential, err := s.RedeemEnrollment(ctx, plain, agentID)
+	redeemed, err := s.RedeemEnrollment(ctx, plain, agentID)
 	if err != nil {
 		t.Fatalf("RedeemEnrollment: %v", err)
+	}
+	credential, err := s.IssueCredential(ctx, agentID)
+	if err != nil {
+		t.Fatalf("IssueCredential: %v", err)
 	}
 	if redeemed.Labels["team"] != "growth" {
 		t.Errorf("labels did not survive: %v", redeemed.Labels)
@@ -200,10 +204,10 @@ func TestEnrollmentTokenCannotBeReused(t *testing.T) {
 	if err != nil {
 		t.Fatalf("MintEnrollment: %v", err)
 	}
-	if _, _, err := s.RedeemEnrollment(ctx, plain, "a_1"); err != nil {
+	if _, err := s.RedeemEnrollment(ctx, plain, "a_1"); err != nil {
 		t.Fatalf("first redemption: %v", err)
 	}
-	if _, _, err := s.RedeemEnrollment(ctx, plain, "a_2"); err == nil {
+	if _, err := s.RedeemEnrollment(ctx, plain, "a_2"); err == nil {
 		t.Fatal("a one-time enrollment token was redeemed twice")
 	}
 }
@@ -217,7 +221,7 @@ func TestExpiredEnrollmentTokenRejected(t *testing.T) {
 		t.Fatalf("MintEnrollment: %v", err)
 	}
 	time.Sleep(2 * time.Millisecond)
-	if _, _, err := s.RedeemEnrollment(ctx, plain, "a_1"); !errors.Is(err, core.ErrUnauthorized) {
+	if _, err := s.RedeemEnrollment(ctx, plain, "a_1"); !errors.Is(err, core.ErrUnauthorized) {
 		t.Errorf("err = %v, want ErrUnauthorized", err)
 	}
 }
@@ -228,7 +232,7 @@ func TestUnknownEnrollmentTokenLooksLikeASpentOne(t *testing.T) {
 	s, _ := newService(t, Options{})
 	ctx := context.Background()
 
-	_, err := errAndNil(s.RedeemEnrollment(ctx, newSecret(PrefixEnrollment), "a_1"))
+	_, err := s.RedeemEnrollment(ctx, newSecret(PrefixEnrollment), "a_1")
 	if !errors.Is(err, core.ErrUnauthorized) {
 		t.Errorf("err = %v, want ErrUnauthorized", err)
 	}
@@ -242,7 +246,7 @@ func TestWrongSecretTypeIsRejectedWithoutALookup(t *testing.T) {
 	ctx := context.Background()
 
 	// An API key pasted into the enrollment field.
-	if _, _, err := s.RedeemEnrollment(ctx, newSecret(PrefixAPIKey), "a_1"); !errors.Is(err, core.ErrUnauthorized) {
+	if _, err := s.RedeemEnrollment(ctx, newSecret(PrefixAPIKey), "a_1"); !errors.Is(err, core.ErrUnauthorized) {
 		t.Errorf("err = %v, want ErrUnauthorized", err)
 	}
 	// An enrollment token presented as a channel credential.
@@ -260,9 +264,12 @@ func TestRevokedAgentCredentialStopsWorking(t *testing.T) {
 	ctx := context.Background()
 
 	_, plain, _ := s.MintEnrollment(ctx, nil, 0)
-	_, credential, err := s.RedeemEnrollment(ctx, plain, "a_1")
-	if err != nil {
+	if _, err := s.RedeemEnrollment(ctx, plain, "a_1"); err != nil {
 		t.Fatalf("RedeemEnrollment: %v", err)
+	}
+	credential, err := s.IssueCredential(ctx, "a_1")
+	if err != nil {
+		t.Fatalf("IssueCredential: %v", err)
 	}
 	if _, err := s.AuthenticateAgent(ctx, credential); err != nil {
 		t.Fatalf("AuthenticateAgent: %v", err)
@@ -285,9 +292,12 @@ func TestRevocationIsPerAgent(t *testing.T) {
 	credentials := map[string]string{}
 	for _, id := range []string{"a_1", "a_2"} {
 		_, plain, _ := s.MintEnrollment(ctx, nil, 0)
-		_, cred, err := s.RedeemEnrollment(ctx, plain, id)
-		if err != nil {
+		if _, err := s.RedeemEnrollment(ctx, plain, id); err != nil {
 			t.Fatalf("RedeemEnrollment(%s): %v", id, err)
+		}
+		cred, err := s.IssueCredential(ctx, id)
+		if err != nil {
+			t.Fatalf("IssueCredential(%s): %v", id, err)
 		}
 		credentials[id] = cred
 	}
@@ -493,7 +503,3 @@ func TestHashSecretIsStableAndOpaque(t *testing.T) {
 	}
 }
 
-// errAndNil adapts a three-result call for tests that only care about the error.
-func errAndNil(_ core.EnrollmentToken, _ string, err error) (struct{}, error) {
-	return struct{}{}, err
-}

@@ -88,16 +88,17 @@ func (s *Service) MintEnrollment(ctx context.Context, labels map[string]string, 
 	return token, secret, nil
 }
 
-// RedeemEnrollment spends a token and issues that agent its own credential.
+// RedeemEnrollment spends a one-time token on behalf of agentID.
 //
-// This is the moment the two secrets separate. From here the agent
-// authenticates with something only it holds, so the token can leak without
-// granting anything, and this specific device can be revoked without touching
-// any other.
-func (s *Service) RedeemEnrollment(ctx context.Context, tokenPlain, agentID string) (core.EnrollmentToken, string, error) {
+// It deliberately does not issue the credential. The credential belongs to an
+// agent record, and that record does not exist yet at this point -- the caller
+// creates it only once redemption has succeeded, so a stream of bad tokens
+// cannot litter the database with agents that never enrolled. IssueCredential
+// is the second half.
+func (s *Service) RedeemEnrollment(ctx context.Context, tokenPlain, agentID string) (core.EnrollmentToken, error) {
 	tokenPlain = strings.TrimSpace(tokenPlain)
 	if !hasPrefix(tokenPlain, PrefixEnrollment) {
-		return core.EnrollmentToken{}, "", fmt.Errorf("%w: that does not look like an enrollment token (they start with %s_)", core.ErrUnauthorized, PrefixEnrollment)
+		return core.EnrollmentToken{}, fmt.Errorf("%w: that does not look like an enrollment token (they start with %s_)", core.ErrUnauthorized, PrefixEnrollment)
 	}
 
 	now := time.Now().UTC()
@@ -106,16 +107,27 @@ func (s *Service) RedeemEnrollment(ctx context.Context, tokenPlain, agentID stri
 		// A token that does not exist and a token that was already spent are
 		// different to us but must look the same to a caller guessing tokens.
 		if errors.Is(err, core.ErrNotFound) {
-			return core.EnrollmentToken{}, "", fmt.Errorf("%w: unknown or already-used enrollment token", core.ErrUnauthorized)
+			return core.EnrollmentToken{}, fmt.Errorf("%w: unknown or already-used enrollment token", core.ErrUnauthorized)
 		}
-		return core.EnrollmentToken{}, "", err
+		return core.EnrollmentToken{}, err
 	}
+	return token, nil
+}
 
+// IssueCredential mints an agent's long-lived channel credential.
+//
+// This is the moment the two secrets separate. From here the agent
+// authenticates with something only it holds, so the enrollment token can leak
+// without granting anything, and this specific device can be revoked without
+// touching any other.
+//
+// The plaintext is returned once and never stored.
+func (s *Service) IssueCredential(ctx context.Context, agentID string) (string, error) {
 	credential := newSecret(PrefixAgentCred)
-	if err := s.store.PutAgentCredential(ctx, agentID, hashSecret(credential), now); err != nil {
-		return core.EnrollmentToken{}, "", err
+	if err := s.store.PutAgentCredential(ctx, agentID, hashSecret(credential), time.Now().UTC()); err != nil {
+		return "", err
 	}
-	return token, credential, nil
+	return credential, nil
 }
 
 // AuthenticateAgent resolves a channel credential to an agent id.
