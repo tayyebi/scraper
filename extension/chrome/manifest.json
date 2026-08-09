@@ -1,0 +1,54 @@
+{
+  "manifest_version": 3,
+  "name": "Browser Fleet Agent",
+  "version": "0.1.0",
+  "description": "Attaches this browser to a hub so automations can drive it, with your real profile and real sessions.",
+
+  "permissions": [
+    "storage",
+    "tabs",
+    "alarms",
+    "cookies",
+    "webNavigation"
+  ],
+
+  "optional_permissions": [
+    "debugger"
+  ],
+
+  "host_permissions": ["<all_urls>"],
+
+  "background": {
+    "service_worker": "background.js"
+  },
+
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Browser Fleet Agent"
+  },
+
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "all_frames": true,
+      "run_at": "document_start",
+      "js": [
+        "shared/protocol.js",
+        "shared/domsnap.js",
+        "shared/dommirror.js",
+        "shared/commands.js",
+        "shared/netlog.js",
+        "content.js"
+      ]
+    },
+    {
+      "matches": ["<all_urls>"],
+      "all_frames": true,
+      "run_at": "document_start",
+      "world": "MAIN",
+      "js": ["inject.js"]
+    }
+  ],
+
+  "minimum_chrome_version": "111"
+}

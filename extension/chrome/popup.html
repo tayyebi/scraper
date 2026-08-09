@@ -1,0 +1,130 @@
+<!doctype html>
+<!--
+  The agent popup.
+
+  This is where the consent story lives. Enrollment is the one gesture a person
+  makes; commands run unattended afterwards. So this page always shows what the
+  hub has been doing in this browser, and always offers a way to stop it.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Browser Fleet Agent</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body {
+      font: 13px/1.5 system-ui, sans-serif;
+      width: 22rem;
+      margin: 0;
+      padding: .9rem;
+    }
+    h1 { font-size: 1rem; margin: 0 0 .6rem; }
+    h2 { font-size: .85rem; margin: 1rem 0 .35rem; text-transform: uppercase; letter-spacing: .04em; opacity: .65; }
+    p { margin: .35rem 0; }
+    form { display: grid; gap: .45rem; }
+    label { font-size: .8rem; opacity: .75; }
+    input, button, select { font: inherit; padding: .35rem .45rem; }
+    button { cursor: pointer; }
+
+    /* State attributes drive the styling, so what you see is what is stored. */
+    output[name="status"] { font-weight: 650; }
+    [data-status="online"] { color: #2e7d32; }
+    [data-status="offline"], [data-status="connecting"] { color: #b26a00; }
+    [data-status="rejected"], [data-status="error"] { color: #c62828; }
+
+    ol { list-style: none; margin: 0; padding: 0; max-height: 11rem; overflow: auto; }
+    ol li { display: flex; gap: .5rem; padding: .15rem 0; border-bottom: 1px solid rgb(128 128 128 / .2); }
+    ol time { opacity: .6; white-space: nowrap; }
+    ol code { opacity: .75; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    ul { margin: 0; padding-left: 1rem; }
+    small { opacity: .7; }
+    hr { border: 0; border-top: 1px solid rgb(128 128 128 / .25); margin: .9rem 0; }
+    button[name="disconnect"] { color: #c62828; }
+  </style>
+</head>
+<body>
+
+<h1>Browser Fleet Agent</h1>
+
+<p>
+  <output name="status">offline</output>
+  <small><output name="detail"></output></small>
+</p>
+
+<!-- Not yet enrolled. -->
+<section data-view="enroll" hidden>
+  <p><small>
+    Paste the hub URL and a one-time enrollment token. The token is spent
+    immediately and exchanged for a credential only this browser holds.
+  </small></p>
+  <form name="enroll">
+    <label for="hub">Hub URL</label>
+    <input id="hub" name="hubURL" type="url" placeholder="http://localhost:8080" required>
+    <label for="token">Enrollment token</label>
+    <input id="token" name="token" placeholder="e_..." required>
+    <label for="name">Name for this browser</label>
+    <input id="name" name="name" placeholder="my laptop">
+    <button type="submit">Connect</button>
+  </form>
+  <p role="alert"><output name="error"></output></p>
+</section>
+
+<!-- Enrolled. -->
+<section data-view="connected" hidden>
+  <p><small>Hub <output name="hub"></output> · agent <output name="agent"></output></small></p>
+
+  <h2>This tab</h2>
+  <p>
+    <button type="button" name="attach">Attach the current tab</button>
+  </p>
+  <p><small>
+    Attaching hands a tab you are already signed into over to the hub. That is
+    the point of this agent: it drives sessions a person had to log into.
+  </small></p>
+
+  <h2>Controlled sessions</h2>
+  <ul data-rows="sessions"></ul>
+
+  <h2>Capture</h2>
+  <form name="settings">
+    <label for="capture">Network capture</label>
+    <select id="capture" name="captureMode">
+      <option value="fetch-patch">fetch/XHR patch — silent, partial</option>
+      <option value="none">off</option>
+    </select>
+    <label>
+      <input type="checkbox" name="evalEnabled">
+      Allow <code>eval</code> (arbitrary code in pages)
+    </label>
+    <small>
+      The hub tells callers exactly what a partial capture mode cannot see, so a
+      scraper is never handed a request log that merely looks complete.
+    </small>
+  </form>
+
+  <h2>Recent activity</h2>
+  <ol data-rows="log"></ol>
+
+  <hr>
+  <button type="button" name="disconnect">Disconnect and erase credentials</button>
+</section>
+
+<template data-row="log">
+  <li>
+    <time></time>
+    <strong></strong>
+    <code></code>
+  </li>
+</template>
+
+<template data-row="session">
+  <li>
+    <span></span>
+    <button type="button">Detach</button>
+  </li>
+</template>
+
+<script src="popup.js"></script>
+</body>
+</html>
