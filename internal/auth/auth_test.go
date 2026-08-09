@@ -502,4 +502,3 @@ func TestHashSecretIsStableAndOpaque(t *testing.T) {
 		t.Errorf("hash length = %d, want 64 hex characters", len(a))
 	}
 }
-
