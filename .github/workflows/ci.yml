@@ -126,3 +126,20 @@ jobs:
           name: hubd-linux-amd64
           path: dist/hubd
           if-no-files-found: error
+
+      # The extension bundles are built by Go, not Node: there is no Node
+      # toolchain in this project. pack also verifies that every file each
+      # manifest references actually exists, which is the only automated check
+      # the JavaScript gets.
+      - name: pack extensions
+        run: |
+          set -o pipefail
+          go run ./cmd/pack -out dist 2>&1 | .github/scripts/annotate.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: extensions
+          path: |
+            dist/chrome.zip
+            dist/firefox.xpi
+          if-no-files-found: error
