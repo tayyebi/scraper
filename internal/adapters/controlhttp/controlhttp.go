@@ -241,8 +241,8 @@ func (h *Handler) mintEnrollment(w http.ResponseWriter, r *http.Request) {
 // reading a request log that looked complete.
 type agentView struct {
 	core.Agent
-	CaptureGaps []string `json:"captureGaps,omitempty"`
-	FullFidelity bool    `json:"fullFidelityCapture"`
+	CaptureGaps  []string `json:"captureGaps,omitempty"`
+	FullFidelity bool     `json:"fullFidelityCapture"`
 }
 
 func viewAgent(a core.Agent) agentView {

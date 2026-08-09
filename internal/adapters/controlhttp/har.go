@@ -61,15 +61,15 @@ type harEntry struct {
 }
 
 type harRequest struct {
-	Method      string        `json:"method"`
-	URL         string        `json:"url"`
-	HTTPVersion string        `json:"httpVersion"`
-	Cookies     []harCookie   `json:"cookies"`
-	Headers     []harNameVal  `json:"headers"`
-	QueryString []harNameVal  `json:"queryString"`
-	PostData    *harPostData  `json:"postData,omitempty"`
-	HeadersSize int64         `json:"headersSize"`
-	BodySize    int64         `json:"bodySize"`
+	Method      string       `json:"method"`
+	URL         string       `json:"url"`
+	HTTPVersion string       `json:"httpVersion"`
+	Cookies     []harCookie  `json:"cookies"`
+	Headers     []harNameVal `json:"headers"`
+	QueryString []harNameVal `json:"queryString"`
+	PostData    *harPostData `json:"postData,omitempty"`
+	HeadersSize int64        `json:"headersSize"`
+	BodySize    int64        `json:"bodySize"`
 }
 
 type harResponse struct {
