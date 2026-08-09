@@ -3,7 +3,10 @@ name: ci
 on:
   push:
     branches: [main]
+    tags: ['v*']
   pull_request:
+  release:
+    types: [published]
   workflow_dispatch:
 
 permissions:
@@ -54,8 +57,11 @@ jobs:
             echo "no Go files yet"
           fi
 
+      # ref_type guards the tag case: on a tag push ref_name is the tag, and
+      # "git push origin HEAD:v0.0.1" would move the tag to a new commit.
+      # Normalization only ever belongs on a branch.
       - name: Commit normalization back to ${{ github.ref_name }}
-        if: github.event_name == 'push' && github.actor != 'github-actions[bot]'
+        if: github.event_name == 'push' && github.ref_type == 'branch' && github.actor != 'github-actions[bot]'
         run: |
           if [ -z "$(git status --porcelain)" ]; then
             echo "already normalized"
@@ -116,25 +122,53 @@ jobs:
           set -o pipefail
           go test ./... -count=1 2>&1 | .github/scripts/annotate.sh
 
+  # Packaging is deliberately absent from the build job: an artifact on every
+  # push and pull request is a retention bill for bytes nobody downloads, and a
+  # binary with no tag behind it is not something anyone should be handed. The
+  # only automated check the packer contributed to everyday CI -- that no
+  # manifest references a file that is missing -- is already covered by
+  # TestRealExtensionsPackage, which packs the real extensions under go test.
+  release:
+    name: package + publish
+    runs-on: ubuntu-latest
+    needs: build
+    # True for a pushed v* tag and for a release published from the UI on an
+    # existing tag; both carry refs/tags/<tag> as the ref.
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - run: chmod +x .github/scripts/annotate.sh
+
+      # The tag is the version: cmd/hubd declares `var version = "dev"` for
+      # exactly this stamp, so `hubd -version` reports what was released.
       - name: build hubd
         run: |
           set -o pipefail
-          CGO_ENABLED=0 go build -trimpath -o dist/hubd ./cmd/hubd 2>&1 | .github/scripts/annotate.sh
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: hubd-linux-amd64
-          path: dist/hubd
-          if-no-files-found: error
+          CGO_ENABLED=0 go build -trimpath \
+            -ldflags "-s -w -X main.version=${{ github.ref_name }}" \
+            -o dist/hubd-linux-amd64 ./cmd/hubd 2>&1 | .github/scripts/annotate.sh
 
       # The extension bundles are built by Go, not Node: there is no Node
-      # toolchain in this project. pack also verifies that every file each
-      # manifest references actually exists, which is the only automated check
-      # the JavaScript gets.
+      # toolchain in this project.
       - name: pack extensions
         run: |
           set -o pipefail
           go run ./cmd/pack -out dist 2>&1 | .github/scripts/annotate.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hubd-linux-amd64
+          path: dist/hubd-linux-amd64
+          if-no-files-found: error
 
       - uses: actions/upload-artifact@v4
         with:
@@ -143,3 +177,20 @@ jobs:
             dist/chrome.zip
             dist/firefox.xpi
           if-no-files-found: error
+
+      # A tag push arrives with no release behind it, so create one; a release
+      # published from the UI already exists, so only upload. --clobber makes a
+      # re-run replace the assets instead of failing on the second attempt.
+      - name: Attach assets to the ${{ github.ref_name }} release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag='${{ github.ref_name }}'
+          if ! gh release view "$tag" >/dev/null 2>&1; then
+            gh release create "$tag" --title "$tag" --generate-notes
+          fi
+          gh release upload "$tag" \
+            dist/hubd-linux-amd64 \
+            dist/chrome.zip \
+            dist/firefox.xpi \
+            --clobber
