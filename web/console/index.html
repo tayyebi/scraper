@@ -1,0 +1,333 @@
+<!doctype html>
+<!--
+  The Operator Console.
+
+  Conventions, held deliberately: semantic elements carry the meaning, and
+  styling hangs off element names and state attributes -- [data-status=online],
+  [aria-current=page], [open] -- so one attribute drives both appearance and
+  accessibility instead of a class doing the first and an aria-* doing the
+  second, separately, until they disagree.
+
+  No classes, no ids, no framework, no build step. Three files.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Browser fleet controller</title>
+  <link rel="stylesheet" href="/console/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>&#x1F5A5;</text></svg>">
+  <script src="/console/app.js" type="module" defer></script>
+</head>
+
+<body>
+
+<header>
+  <h1>Browser fleet controller</h1>
+  <nav aria-label="Sections">
+    <a href="#agents" aria-current="page">Agents</a>
+    <a href="#sessions">Sessions</a>
+    <a href="#keys">Keys</a>
+  </nav>
+  <p role="status" aria-live="polite"><output name="status"></output></p>
+  <form method="dialog" name="logout" hidden>
+    <span><output name="user"></output></span>
+    <button type="submit">Sign out</button>
+  </form>
+</header>
+
+<!-- Shown until /console/session says otherwise. -->
+<main hidden data-view="login">
+  <h2>Sign in</h2>
+  <form name="login">
+    <p>
+      <label for="user">Operator</label>
+      <input name="user" id="user" autocomplete="username" required autofocus>
+    </p>
+    <p>
+      <label for="password">Password</label>
+      <input name="password" id="password" type="password" autocomplete="current-password" required>
+    </p>
+    <p><button type="submit">Sign in</button></p>
+    <p role="alert"><output name="error"></output></p>
+  </form>
+  <aside hidden data-note="disabled">
+    <h3>Console login is not configured</h3>
+    <p>
+      Start <code>hubd</code> with <code>-console-user</code> and
+      <code>-console-password-hash</code>. Generate the hash with:
+    </p>
+    <pre><code>hubd hash-password</code></pre>
+  </aside>
+</main>
+
+<main hidden data-view="console">
+
+  <section id="agents">
+    <h2>Agents</h2>
+
+    <form name="enroll">
+      <p>
+        <label for="labels">Labels for the next agent</label>
+        <input name="labels" id="labels" placeholder="team=growth, env=prod">
+      </p>
+      <p><button type="submit">Mint enrollment token</button></p>
+    </form>
+
+    <!--
+      An enrollment token is shown once and never again, so it gets a dialog
+      rather than a line in a list that scrolls away.
+    -->
+    <dialog data-dialog="token">
+      <form method="dialog">
+        <h3>Enrollment token</h3>
+        <p>Paste this into an agent now. It is shown once, is good for a single
+           agent, and is spent on first use.</p>
+        <p><output name="token"></output></p>
+        <p><small>Expires <time name="expires"></time></small></p>
+        <button type="submit">Done</button>
+      </form>
+    </dialog>
+
+    <table>
+      <caption>Enrolled agents and what each can actually capture</caption>
+      <thead>
+        <tr>
+          <th scope="col">Agent</th>
+          <th scope="col">Status</th>
+          <th scope="col">Browser</th>
+          <th scope="col">Capture</th>
+          <th scope="col">Labels</th>
+          <th scope="col">Last seen</th>
+          <th scope="col">Actions</th>
+        </tr>
+      </thead>
+      <tbody data-rows="agents"></tbody>
+    </table>
+
+    <template data-row="agent">
+      <tr>
+        <th scope="row"><span data-cell="name"></span><br><small data-cell="id"></small></th>
+        <td data-cell="status"></td>
+        <td data-cell="browser"></td>
+        <td data-cell="capture">
+          <details>
+            <summary data-cell="mode"></summary>
+            <ul data-cell="gaps"></ul>
+          </details>
+        </td>
+        <td data-cell="labels"></td>
+        <td><time data-cell="lastSeen"></time></td>
+        <td>
+          <form name="open-session">
+            <input name="url" type="url" placeholder="https://example.com" required>
+            <button type="submit">Open tab</button>
+          </form>
+          <form name="revoke-agent">
+            <button type="submit">Revoke</button>
+          </form>
+        </td>
+      </tr>
+    </template>
+  </section>
+
+  <section id="sessions" hidden>
+    <h2>Sessions</h2>
+    <table>
+      <caption>Managed and attached browsing sessions</caption>
+      <thead>
+        <tr>
+          <th scope="col">Session</th>
+          <th scope="col">Origin</th>
+          <th scope="col">State</th>
+          <th scope="col">Page</th>
+          <th scope="col">Actions</th>
+        </tr>
+      </thead>
+      <tbody data-rows="sessions"></tbody>
+    </table>
+
+    <template data-row="session">
+      <tr>
+        <th scope="row"><small data-cell="id"></small></th>
+        <td data-cell="origin"></td>
+        <td data-cell="state"></td>
+        <td><span data-cell="title"></span><br><small data-cell="url"></small></td>
+        <td>
+          <button type="button" data-action="inspect">Inspect</button>
+          <button type="button" data-action="close">Close</button>
+        </td>
+      </tr>
+    </template>
+  </section>
+
+  <!--
+    The inspector is a <dialog>: it is modal work about one session, and the
+    element already knows how to trap focus and close on Escape.
+  -->
+  <dialog data-dialog="inspect">
+    <form method="dialog"><button type="submit" aria-label="Close inspector">Close</button></form>
+
+    <h2><output name="session-title"></output></h2>
+    <p><small><output name="session-url"></output></small></p>
+
+    <nav aria-label="Inspector tabs">
+      <a href="#steer" aria-current="page">Steer</a>
+      <a href="#dom">DOM</a>
+      <a href="#requests">Requests</a>
+      <a href="#events">Events</a>
+    </nav>
+
+    <section id="steer">
+      <h3>Send a command</h3>
+      <form name="command">
+        <p>
+          <label for="op">Command</label>
+          <select name="op" id="op" required></select>
+        </p>
+        <p>
+          <label for="params">Parameters (JSON)</label>
+          <textarea name="params" id="params" rows="4" spellcheck="false">{}</textarea>
+        </p>
+        <p>
+          <button type="submit">Send and wait</button>
+        </p>
+      </form>
+      <h4>Result</h4>
+      <pre><output name="result"></output></pre>
+    </section>
+
+    <section id="dom" hidden>
+      <h3>DOM mirror</h3>
+      <p>
+        Served from the hub's materialized copy, with no round trip to the
+        browser. <span data-cell="seq"></span>
+      </p>
+      <p>
+        <button type="button" data-action="dom-refresh">Read mirror</button>
+        <button type="button" data-action="dom-fresh">Force re-snapshot</button>
+      </p>
+      <pre><output name="dom"></output></pre>
+    </section>
+
+    <section id="requests" hidden>
+      <h3>Request log</h3>
+      <ul data-rows="capture-gaps" hidden></ul>
+      <p>
+        <button type="button" data-action="requests-refresh">Refresh</button>
+        <a data-action="har" download>Download HAR</a>
+      </p>
+      <table>
+        <caption>Exchanges captured in this session</caption>
+        <thead>
+          <tr>
+            <th scope="col">Method</th>
+            <th scope="col">Status</th>
+            <th scope="col">URL</th>
+            <th scope="col">Type</th>
+            <th scope="col">Size</th>
+            <th scope="col">Time</th>
+          </tr>
+        </thead>
+        <tbody data-rows="requests"></tbody>
+      </table>
+
+      <template data-row="request">
+        <tr>
+          <td data-cell="method"></td>
+          <td data-cell="status"></td>
+          <td>
+            <details>
+              <summary data-cell="url"></summary>
+              <dl data-cell="headers"></dl>
+              <p data-cell="artifact"></p>
+            </details>
+          </td>
+          <td data-cell="mime"></td>
+          <td data-cell="size"></td>
+          <td><time data-cell="duration"></time></td>
+        </tr>
+      </template>
+    </section>
+
+    <section id="events" hidden>
+      <h3>Live events</h3>
+      <p>A kill switch is on the agent side too: every controlled tab shows an
+         indicator and the agent's popup can detach it.</p>
+      <ol data-rows="events" reversed></ol>
+      <template data-row="event">
+        <li>
+          <time data-cell="at"></time>
+          <strong data-cell="type"></strong>
+          <code data-cell="body"></code>
+        </li>
+      </template>
+    </section>
+  </dialog>
+
+  <section id="keys" hidden>
+    <h2>API keys</h2>
+    <form name="mint-key">
+      <p>
+        <label for="key-name">Name</label>
+        <input name="name" id="key-name" required placeholder="ci scraper">
+      </p>
+      <p>
+        <label for="key-scope">Scope</label>
+        <select name="scope" id="key-scope">
+          <option value="read">read — list and observe</option>
+          <option value="steer">steer — also send commands</option>
+          <option value="admin">admin — also enroll and revoke</option>
+        </select>
+      </p>
+      <p><button type="submit">Mint key</button></p>
+    </form>
+
+    <dialog data-dialog="key">
+      <form method="dialog">
+        <h3>API key</h3>
+        <p>Copy this now. It is not stored and cannot be shown again.</p>
+        <p><output name="key"></output></p>
+        <button type="submit">Done</button>
+      </form>
+    </dialog>
+
+    <table>
+      <caption>Control API keys</caption>
+      <thead>
+        <tr>
+          <th scope="col">Name</th>
+          <th scope="col">Scope</th>
+          <th scope="col">Created</th>
+          <th scope="col">Last used</th>
+          <th scope="col">Actions</th>
+        </tr>
+      </thead>
+      <tbody data-rows="keys"></tbody>
+    </table>
+
+    <template data-row="key">
+      <tr>
+        <th scope="row" data-cell="name"></th>
+        <td data-cell="scope"></td>
+        <td><time data-cell="created"></time></td>
+        <td><time data-cell="lastUsed"></time></td>
+        <td>
+          <form name="revoke-key"><button type="submit">Revoke</button></form>
+        </td>
+      </tr>
+    </template>
+  </section>
+
+</main>
+
+<footer>
+  <p><small>
+    hubd <output name="version"></output> ·
+    <output name="online"></output> agents online ·
+    this console is a Control API client, nothing more
+  </small></p>
+</footer>
+
+</body>
+</html>

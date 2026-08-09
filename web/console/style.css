@@ -1,0 +1,284 @@
+/*
+  Operator Console styling.
+
+  The rule this file follows: selectors target elements and state attributes,
+  never classes. [data-status=online] both styles a cell and describes it, so
+  appearance and meaning cannot drift apart -- which is the failure mode of the
+  usual arrangement, where a class does the looking and an aria-* does the
+  telling until somebody updates one of them.
+*/
+
+:root {
+  color-scheme: light dark;
+
+  --bg: Canvas;
+  --fg: CanvasText;
+  --muted: color-mix(in srgb, CanvasText 55%, Canvas);
+  --line: color-mix(in srgb, CanvasText 18%, Canvas);
+  --raised: color-mix(in srgb, CanvasText 4%, Canvas);
+  --accent: color-mix(in srgb, AccentColor 85%, CanvasText);
+  --ok: color-mix(in srgb, green 65%, CanvasText);
+  --warn: color-mix(in srgb, darkorange 70%, CanvasText);
+  --bad: color-mix(in srgb, crimson 70%, CanvasText);
+
+  --gap: 1rem;
+  --radius: 6px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 0 var(--gap) 4rem;
+  background: var(--bg);
+  color: var(--fg);
+  font: 15px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif;
+  max-width: 76rem;
+  margin-inline: auto;
+}
+
+/* ------------------------------------------------------------ structure */
+
+header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--gap);
+  padding-block: var(--gap);
+  border-bottom: 1px solid var(--line);
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+  z-index: 2;
+}
+
+header h1 { font-size: 1.05rem; margin: 0; font-weight: 650; }
+header form[name="logout"] { margin-left: auto; display: flex; gap: .5rem; align-items: baseline; }
+
+nav { display: flex; gap: .25rem; }
+
+nav a {
+  color: var(--muted);
+  text-decoration: none;
+  padding: .2rem .6rem;
+  border-radius: var(--radius);
+}
+
+nav a:hover { background: var(--raised); color: var(--fg); }
+
+/* aria-current is the state. It drives the styling directly, so a tab that
+   looks selected is the tab a screen reader announces as selected. */
+nav a[aria-current="page"] {
+  color: var(--fg);
+  background: var(--raised);
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+section { padding-block: calc(var(--gap) * 1.5); }
+h2 { font-size: 1.3rem; margin: 0 0 .5rem; }
+h3 { font-size: 1.05rem; margin: 1.2rem 0 .4rem; }
+h4 { font-size: .95rem; margin: 1rem 0 .3rem; color: var(--muted); }
+
+footer { border-top: 1px solid var(--line); padding-top: var(--gap); color: var(--muted); }
+
+/* ---------------------------------------------------------------- tables */
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-block: var(--gap);
+  font-variant-numeric: tabular-nums;
+}
+
+caption {
+  text-align: left;
+  color: var(--muted);
+  padding-bottom: .4rem;
+  font-size: .9rem;
+}
+
+th, td {
+  text-align: left;
+  padding: .5rem .6rem;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+
+thead th {
+  font-size: .8rem;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+tbody tr:hover { background: var(--raised); }
+tbody th[scope="row"] { font-weight: 550; }
+
+/* An empty table should say so rather than looking like a broken one. */
+tbody:empty::after {
+  content: "Nothing here yet.";
+  display: block;
+  padding: .8rem .6rem;
+  color: var(--muted);
+}
+
+/* --------------------------------------------------------- state colours */
+
+[data-status] { font-weight: 600; }
+[data-status="online"] { color: var(--ok); }
+[data-status="offline"] { color: var(--muted); }
+
+[data-state="open"] { color: var(--ok); }
+[data-state="closed"] { color: var(--muted); }
+
+/* Attached means a human handed the tab over, which is worth seeing at a
+   glance: closing it is rude in a way closing a managed tab is not. */
+[data-origin="attached"] { color: var(--accent); font-weight: 600; }
+[data-origin="managed"] { color: var(--muted); }
+
+[data-fidelity="partial"] { color: var(--warn); }
+[data-fidelity="full"] { color: var(--ok); }
+
+[data-status-class="2"] { color: var(--ok); }
+[data-status-class="3"] { color: var(--muted); }
+[data-status-class="4"],
+[data-status-class="5"] { color: var(--bad); }
+
+/* ----------------------------------------------------------------- forms */
+
+form { display: flex; flex-wrap: wrap; gap: .5rem; align-items: end; }
+form p { margin: 0; display: flex; flex-direction: column; gap: .25rem; }
+
+label { font-size: .82rem; color: var(--muted); }
+
+input, select, textarea, button {
+  font: inherit;
+  padding: .4rem .55rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--fg);
+}
+
+textarea { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .88rem; resize: vertical; }
+
+button {
+  background: var(--raised);
+  cursor: pointer;
+  font-weight: 550;
+}
+
+button:hover { border-color: var(--accent); }
+button:disabled { opacity: .5; cursor: progress; }
+
+/* A destructive action should not look like an ordinary one. */
+form[name="revoke-agent"] button,
+form[name="revoke-key"] button,
+[data-action="close"] { color: var(--bad); }
+
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* --------------------------------------------------------------- details */
+
+details { margin: 0; }
+summary { cursor: pointer; }
+details[open] summary { margin-bottom: .4rem; font-weight: 600; }
+
+details ul { margin: .3rem 0 0; padding-left: 1.1rem; color: var(--warn); font-size: .85rem; }
+details ul:empty { display: none; }
+
+dl { margin: .4rem 0; font-size: .85rem; display: grid; grid-template-columns: auto 1fr; gap: .1rem .6rem; }
+dt { color: var(--muted); }
+dd { margin: 0; word-break: break-all; }
+
+/* ---------------------------------------------------------------- dialog */
+
+dialog {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--fg);
+  padding: calc(var(--gap) * 1.2);
+  max-width: min(62rem, 92vw);
+  width: 100%;
+  max-height: 88vh;
+}
+
+dialog::backdrop { background: rgb(0 0 0 / .5); }
+dialog > form[method="dialog"]:first-of-type { justify-content: end; }
+
+/* ------------------------------------------------------------------ text */
+
+code, pre, output[name="token"], output[name="key"] {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: .87rem;
+}
+
+pre {
+  background: var(--raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: .7rem;
+  overflow: auto;
+  max-height: 26rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* A one-time secret should be obviously selectable, because the only correct
+   response to seeing it is to copy it immediately. */
+output[name="token"], output[name="key"] {
+  display: block;
+  user-select: all;
+  background: var(--raised);
+  border: 1px dashed var(--accent);
+  border-radius: var(--radius);
+  padding: .6rem;
+  word-break: break-all;
+}
+
+small { color: var(--muted); }
+time { white-space: nowrap; }
+
+output[name="status"]:not(:empty) { color: var(--muted); }
+output[name="error"]:not(:empty) { color: var(--bad); }
+
+ol[data-rows="events"] {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: 24rem;
+  overflow: auto;
+  font-size: .87rem;
+}
+
+ol[data-rows="events"] li {
+  padding: .3rem 0;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  gap: .6rem;
+}
+
+ol[data-rows="events"] code { color: var(--muted); word-break: break-all; }
+
+ul[data-rows="capture-gaps"] {
+  border-left: 3px solid var(--warn);
+  padding: .4rem 0 .4rem 1.2rem;
+  margin: 0 0 var(--gap);
+  color: var(--warn);
+  font-size: .87rem;
+}
+
+aside[data-note] {
+  border-left: 3px solid var(--accent);
+  padding-left: var(--gap);
+  margin-top: calc(var(--gap) * 2);
+}
+
+@media (max-width: 40rem) {
+  table, thead, tbody, tr, th, td { display: block; }
+  thead { display: none; }
+  tr { border-bottom: 2px solid var(--line); padding-block: .4rem; }
+  th, td { border: 0; padding: .2rem .1rem; }
+}
